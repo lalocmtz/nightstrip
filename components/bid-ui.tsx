@@ -43,6 +43,7 @@ export function BidForm({
   amountDue,
   alreadyListed,
   livePayments,
+  claimsDisabled,
 }: {
   district: District;
   takeNumberOne: number;
@@ -57,6 +58,7 @@ export function BidForm({
   amountDue?: number;
   alreadyListed?: boolean;
   livePayments?: boolean;
+  claimsDisabled?: boolean;
 }) {
   const meta = DISTRICT_META[district];
   const min = Math.max(MIN_BID_USD, takeNumberOne);
@@ -108,10 +110,10 @@ export function BidForm({
       />
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || claimsDisabled}
         className="h-12 rounded-2xl bg-[var(--cta)] text-sm font-bold text-black disabled:opacity-60"
       >
-        Claim · pay {usd(due)}
+        {claimsDisabled ? "Claims paused" : `Claim · pay ${usd(due)}`}
       </button>
       {error ? <p className="text-xs text-[var(--magenta)]">{error}</p> : null}
       {alreadyListed ? (

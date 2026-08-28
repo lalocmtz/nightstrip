@@ -20,6 +20,7 @@ export default async function Home() {
       initialBoard={serializeBoard(home.board)}
       initialCredits={home.credits}
       demoPayments={demoPaymentsEnabled()}
+      claimsDisabled={process.env.VERCEL_ENV === "preview" || process.env.DISABLE_CLAIMS === "1"}
     />
   );
 }

@@ -19,10 +19,12 @@ export function NightstripApp({
   initialBoard,
   initialCredits,
   demoPayments: demoFromServer,
+  claimsDisabled,
 }: {
   initialBoard: import("@/components/bid-ui").ClientBoard;
   initialCredits: number;
   demoPayments: boolean;
+  claimsDisabled: boolean;
 }) {
   const { board, credits, demoPayments, refresh, setCredits, latest } = useBoard({
     board: initialBoard,
@@ -55,7 +57,7 @@ export function NightstripApp({
   const bid = Math.max(requestedBid, quote?.requiredBid ?? requestedBid);
 
   useEffect(() => {
-    if (!sheet && !desktop) {
+    if (claimsDisabled || (!sheet && !desktop)) {
       return;
     }
     const controller = new AbortController();
@@ -77,7 +79,7 @@ export function NightstripApp({
       });
 
     return () => controller.abort();
-  }, [board?.generatedAt, desktop, district, requestedBid, sheet, target]);
+  }, [board?.generatedAt, claimsDisabled, desktop, district, requestedBid, sheet, target]);
 
   const openTake = useCallback(
     (next: District, listing?: ClientListing) => {
@@ -92,6 +94,7 @@ export function NightstripApp({
   );
 
   async function claim() {
+    if (claimsDisabled) return;
     setBusy(true);
     setError("");
     const res = await fetch("/api/claim", {
@@ -222,6 +225,7 @@ export function NightstripApp({
             amountDue={quote?.amountDue}
             alreadyListed={quote?.alreadyListed}
             livePayments={!demoPayments}
+            claimsDisabled={claimsDisabled}
           />
           <div>
             <p className="side-label">Latest activity</p>
@@ -266,7 +270,13 @@ export function NightstripApp({
           </a>
         </p>
         <Link href="/faq">FAQ</Link>
-        {demoPayments ? <span className="demo-pill">DEMO</span> : <span className="demo-pill live">LIVE PAY</span>}
+        {claimsDisabled ? (
+          <span className="demo-pill">READ ONLY</span>
+        ) : demoPayments ? (
+          <span className="demo-pill">DEMO</span>
+        ) : (
+          <span className="demo-pill live">LIVE PAY</span>
+        )}
         <p className="disclaimer">
           SFW feed · explicit only behind Visitar · host zero porn · process zero bets
         </p>
@@ -289,6 +299,7 @@ export function NightstripApp({
               amountDue={quote?.amountDue}
               alreadyListed={quote?.alreadyListed}
               livePayments={!demoPayments}
+              claimsDisabled={claimsDisabled}
             />
             <button type="button" className="mt-3 w-full text-sm text-white/40" onClick={() => setSheet(false)}>
               Close
