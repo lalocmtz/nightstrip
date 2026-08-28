@@ -43,6 +43,11 @@ export async function getWalletId(): Promise<string> {
   return id;
 }
 
+export async function readWalletId(): Promise<string | null> {
+  const jar = await cookies();
+  return unsign(jar.get(WALLET_COOKIE)?.value);
+}
+
 export async function hasAgeGate(): Promise<boolean> {
   const jar = await cookies();
   return jar.get(AGE_COOKIE)?.value === "1";

@@ -111,7 +111,8 @@ export function applyClaim(input: {
       name: input.name,
       handle: input.handle,
       url: input.url,
-      bid: input.bid,
+      // A delayed payment for an older invoice must never lower a newer bid.
+      bid: Math.max(existing.bid, input.bid),
       updatedAt: input.now,
     };
     return {

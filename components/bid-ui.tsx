@@ -40,6 +40,8 @@ export function BidForm({
   error,
   onSubmit,
   compact,
+  amountDue,
+  alreadyListed,
 }: {
   district: District;
   takeNumberOne: number;
@@ -51,10 +53,13 @@ export function BidForm({
   error: string;
   onSubmit: () => void;
   compact?: boolean;
+  amountDue?: number;
+  alreadyListed?: boolean;
 }) {
   const meta = DISTRICT_META[district];
   const min = Math.max(MIN_BID_USD, takeNumberOne);
   const amount = Math.max(min, bid);
+  const due = amountDue ?? amount;
 
   return (
     <form
@@ -66,7 +71,7 @@ export function BidForm({
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-white">
-          Take #1 for
+          {alreadyListed ? "Raise your bid to" : "Claim this spot at"}
         </p>
         <span className="text-[11px] uppercase tracking-wider" style={{ color: meta.hex }}>
           {meta.short} only
@@ -104,9 +109,14 @@ export function BidForm({
         disabled={busy}
         className="h-12 rounded-2xl bg-[var(--cta)] text-sm font-bold text-black disabled:opacity-60"
       >
-        Claim · pay {usd(amount)}
+        Claim · pay {usd(due)}
       </button>
       {error ? <p className="text-xs text-[var(--magenta)]">{error}</p> : null}
+      {alreadyListed ? (
+        <p className="text-[11px] leading-5 text-white/55">
+          Your total bid becomes {usd(amount)}. You only pay the {usd(due)} difference.
+        </p>
+      ) : null}
       {!compact ? (
         <p className="text-[11px] leading-5 text-white/40">
           Min +$5 · pay the difference · stay ranked until outbid · this side only.

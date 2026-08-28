@@ -50,24 +50,23 @@ export async function performClaim(input: {
 
   const demo = !nowpaymentsConfigured();
 
-  return withStore(async (state) => {
-    const wallet = getWallet(state, input.walletId);
-    const quote = quoteClaim({
-      listings: state.listings,
-      district: input.district,
-      walletId: input.walletId,
-      requestedBid: input.requestedBid,
-      targetListingId: input.targetListingId,
-    });
+  if (demo) {
+    return withStore((state) => {
+      const wallet = getWallet(state, input.walletId);
+      const quote = quoteClaim({
+        listings: state.listings,
+        district: input.district,
+        walletId: input.walletId,
+        requestedBid: input.requestedBid,
+        targetListingId: input.targetListingId,
+      });
 
-    if (quote.amountDue <= 0) {
-      return { ok: false, error: "Nothing due.", status: 400 };
-    }
-
-    if (demo) {
+      if (quote.amountDue <= 0) {
+        return { ok: false as const, error: "Nothing due.", status: 400 };
+      }
       if (wallet.credits < quote.amountDue) {
         return {
-          ok: false,
+          ok: false as const,
           error: `Need ${quote.amountDue} credits. Add demo credits first.`,
           status: 402,
         };
@@ -81,10 +80,26 @@ export async function performClaim(input: {
         amountPaid: quote.amountDue,
         demo: true,
       });
-      return { ok: true, receipt, demo: true };
+      return { ok: true as const, receipt, demo: true };
+    });
+  }
+
+  const orderId = newId("ord");
+  const prepared = await withStore((state) => {
+    const wallet = getWallet(state, input.walletId);
+    void wallet;
+    const quote = quoteClaim({
+      listings: state.listings,
+      district: input.district,
+      walletId: input.walletId,
+      requestedBid: input.requestedBid,
+      targetListingId: input.targetListingId,
+    });
+
+    if (quote.amountDue <= 0) {
+      return { ok: false as const, error: "Nothing due.", status: 400 };
     }
 
-    const orderId = newId("ord");
     state.pendingClaims.push({
       orderId,
       walletId: input.walletId,
@@ -96,27 +111,36 @@ export async function performClaim(input: {
       amountDue: quote.amountDue,
       createdAt: Date.now(),
     });
-
-    const origin = appUrl();
-    try {
-      const invoice = await createNowpaymentsInvoice({
-        priceAmount: quote.amountDue,
-        orderId,
-        description: `NIGHTSTRIP ${DISTRICT_META[input.district].label} · ${identity.name} · $${quote.requiredBid}`,
-        successUrl: `${origin}/r/pending?order=${orderId}`,
-        cancelUrl: origin,
-        ipnCallbackUrl: `${origin}/api/webhooks/nowpayments`,
-      });
-      return { ok: true, payUrl: invoice.invoiceUrl };
-    } catch (error) {
-      state.pendingClaims = state.pendingClaims.filter((item) => item.orderId !== orderId);
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Payment create failed",
-        status: 502,
-      };
-    }
+    return { ok: true as const, quote };
   });
+
+  if (!prepared.ok) return prepared;
+
+  const origin = appUrl();
+  try {
+    const invoice = await createNowpaymentsInvoice({
+      priceAmount: prepared.quote.amountDue,
+      orderId,
+      description: `NIGHTSTRIP ${DISTRICT_META[input.district].label} · ${identity.name} · $${prepared.quote.requiredBid}`,
+      successUrl: `${origin}/r/pending?order=${orderId}`,
+      cancelUrl: origin,
+      ipnCallbackUrl: `${origin}/api/webhooks/nowpayments`,
+    });
+    return { ok: true, payUrl: invoice.invoiceUrl };
+  } catch (error) {
+    try {
+      await withStore((state) => {
+      state.pendingClaims = state.pendingClaims.filter((item) => item.orderId !== orderId);
+      });
+    } catch {
+      // A stale unpaid pending claim is harmless and can be pruned later.
+    }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Payment create failed",
+      status: 502,
+    };
+  }
 }
 
 export function commitClaim(
@@ -145,6 +169,7 @@ export function commitClaim(
   state.listings = applied.listings;
   const rankedDistrict = listingsForDistrict(state.listings, input.district);
   const rank = rankOf(rankedDistrict, applied.listing.id);
+  const effectiveBid = applied.listing.bid;
   const receipt: Receipt = {
     id: newId("rcpt"),
     listingId: applied.listing.id,
@@ -153,7 +178,7 @@ export function commitClaim(
     name: input.identity.name,
     handle: input.identity.handle,
     amountPaid: input.amountPaid,
-    bid: input.bid,
+    bid: effectiveBid,
     rank,
     createdAt: now,
     demo: input.demo,
@@ -167,7 +192,7 @@ export function commitClaim(
     name: input.identity.name,
     handle: input.identity.handle,
     rank,
-    bid: input.bid,
+    bid: effectiveBid,
     createdAt: now,
   });
   state.activity = state.activity.slice(0, 40);

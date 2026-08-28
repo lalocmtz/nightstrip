@@ -32,7 +32,9 @@ export function verifyNowpaymentsSignature(input: {
 
 export function nowpaymentsConfigured(): boolean {
   return Boolean(
-    process.env.NOWPAYMENTS_API_KEY && process.env.NOWPAYMENTS_IPN_SECRET,
+    process.env.NOWPAYMENTS_API_KEY &&
+      process.env.NOWPAYMENTS_IPN_SECRET &&
+      process.env.DATABASE_URL,
   );
 }
 
