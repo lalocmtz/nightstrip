@@ -39,5 +39,15 @@ export async function POST(request: Request) {
   }
 
   const result = await withStore((state) => processNowpaymentsIpn(state, body));
+  if (
+    "ignored" in result &&
+    (result.ignored === "unknown_order" || result.ignored === "amount_mismatch")
+  ) {
+    console.error("nowpayments_ipn_reconciliation_required", {
+      paymentId,
+      orderId: String(body.order_id ?? ""),
+      reason: result.ignored,
+    });
+  }
   return NextResponse.json({ ok: true, ...result });
 }
