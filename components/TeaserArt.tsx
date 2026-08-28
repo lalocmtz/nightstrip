@@ -26,7 +26,7 @@ export function TeaserArt({ name, district, rank, className }: Props) {
       <div className="scan" />
       {district === "red" ? (
         <div className="badges">
-          <span className="rec">REC</span>
+          <span>SFW</span>
           <span>TEASER</span>
           <span>18+</span>
         </div>

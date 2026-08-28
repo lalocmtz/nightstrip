@@ -13,16 +13,12 @@ export function ReelFeed({
   district,
   onDistrict,
   onTake,
-  muted,
-  onMuted,
 }: {
   casino: ClientListing[];
   red: ClientListing[];
   district: District;
   onDistrict: (district: District) => void;
   onTake: (district: District, listing?: ClientListing) => void;
-  muted: boolean;
-  onMuted: (value: boolean) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
@@ -75,9 +71,6 @@ export function ReelFeed({
             </button>
           ))}
         </div>
-        <button type="button" className="chip" onClick={() => onMuted(!muted)}>
-          {muted ? "Muted" : "Sound on"}
-        </button>
       </div>
 
       <div
@@ -102,7 +95,7 @@ export function ReelFeed({
             </div>
           </section>
         ) : (
-          listings.map((item, itemIndex) => (
+          listings.map((item) => (
             <section key={item.id} className="reel-slide">
               <div className={`reel-frame ${item.district}`}>
                 <TeaserArt
@@ -123,9 +116,6 @@ export function ReelFeed({
                   <p className="mt-2 text-[11px] text-white/45">
                     {timeAgo(item.updatedAt)} · {item.clicks.toLocaleString()} clicks · {item.nights} nights
                   </p>
-                  {itemIndex > 0 && muted ? (
-                    <p className="mt-3 text-[11px] text-white/35">Muted until you unmute.</p>
-                  ) : null}
                 </div>
               </div>
             </section>

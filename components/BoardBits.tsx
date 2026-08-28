@@ -55,7 +55,7 @@ export function HeroCard({
             <p className="text-xs text-white/55">{listing.handle}</p>
           </div>
           <div className="text-right">
-            <span className="live">LIVE</span>
+            <span className="rank-badge">RANK #{listing.rank}</span>
             <p className="mt-2 font-[family-name:var(--font-display)] text-2xl" style={{ color: meta.hex }}>
               {usd(listing.bid)}
             </p>
