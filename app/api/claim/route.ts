@@ -43,8 +43,10 @@ export async function POST(request: Request) {
   if ("payUrl" in result) {
     return NextResponse.json({ payUrl: result.payUrl });
   }
+  const { walletId: _walletId, ...receipt } = result.receipt;
+  void _walletId;
   return NextResponse.json({
-    receipt: result.receipt,
+    receipt,
     receiptUrl: `/r/${result.receipt.id}`,
   });
 }
