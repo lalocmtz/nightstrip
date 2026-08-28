@@ -217,8 +217,20 @@ button {
 .hero-overlay {
   position: absolute;
   inset: auto 0 0;
+  z-index: 2;
   padding: 18px;
   background: linear-gradient(to top, #07050ef2, transparent);
+}
+
+.teaser-media img {
+  z-index: 0;
+}
+
+.teaser-media-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(5, 3, 10, 0.28), transparent 42%, rgba(5, 3, 10, 0.42));
 }
 
 .rank-badge {
@@ -230,6 +242,12 @@ button {
   color: #04150c;
   border-radius: 999px;
   padding: 3px 8px;
+}
+
+.rank-badge.sponsored {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(5, 3, 10, 0.72);
+  color: white;
 }
 
 .cta,

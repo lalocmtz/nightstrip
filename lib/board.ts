@@ -1,5 +1,6 @@
 import { DISTRICTS } from "./constants";
 import { demoPaymentsEnabled } from "./nowpayments";
+import { houseListing } from "./house";
 import {
   boardValue,
   listingsForDistrict,
@@ -21,11 +22,16 @@ export function boardFromState(
 ): BoardPayload {
   const districts = {} as BoardPayload["districts"];
   for (const district of DISTRICTS) {
-    const listings = withRanks(listingsForDistrict(state.listings, district), now);
+    const paidListings = listingsForDistrict(state.listings, district);
+    const listings =
+      paidListings.length === 0
+        ? [{ ...houseListing(district), rank: 1, nights: 0 }]
+        : withRanks(paidListings, now);
     districts[district] = {
       listings,
       boardValue: boardValue(state.listings, district),
-      takeNumberOne: minTakeNumberOne(listings[0]?.bid),
+      // House cards are $0 presentation inventory, not auction bids.
+      takeNumberOne: minTakeNumberOne(paidListings[0]?.bid),
     };
   }
   return {

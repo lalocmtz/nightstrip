@@ -12,6 +12,11 @@ export type Listing = {
   createdAt: number;
   updatedAt: number;
   disabled?: boolean;
+  /** Presentation-only inventory owned by NIGHTSTRIP; never persisted as a paid bid. */
+  house?: boolean;
+  label?: "SPONSORED";
+  line?: string;
+  mediaUrl?: string;
 };
 
 export type Wallet = {

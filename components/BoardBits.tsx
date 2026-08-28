@@ -45,33 +45,56 @@ export function HeroCard({
 
   return (
     <article className={`hero-card ${gold ? "gold" : "red"}`}>
-      <TeaserArt name={listing.name} district={district} rank={listing.rank} />
+      <TeaserArt
+        name={listing.name}
+        district={district}
+        rank={listing.rank}
+        mediaUrl={listing.mediaUrl}
+      />
       <div className="hero-overlay">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-[family-name:var(--font-display)] text-2xl text-white">
               {listing.name}
             </p>
-            <p className="text-xs text-white/55">{listing.handle}</p>
-          </div>
-          <div className="text-right">
-            <span className="rank-badge">RANK #{listing.rank}</span>
-            <p className="mt-2 font-[family-name:var(--font-display)] text-2xl" style={{ color: meta.hex }}>
-              {usd(listing.bid)}
+            <p className="max-w-xs text-xs leading-5 text-white/65">
+              {listing.line ?? listing.handle}
             </p>
           </div>
+          <div className="text-right">
+            <span className={`rank-badge ${listing.house ? "sponsored" : ""}`}>
+              {listing.house ? `${listing.label} · #1` : `RANK #${listing.rank}`}
+            </span>
+            {listing.house ? (
+              <p className="mt-2 text-[10px] font-bold tracking-[0.12em]" style={{ color: meta.hex }}>
+                FOUNDER CREDIT · $0
+              </p>
+            ) : (
+              <p className="mt-2 font-[family-name:var(--font-display)] text-2xl" style={{ color: meta.hex }}>
+                {usd(listing.bid)}
+              </p>
+            )}
+          </div>
         </div>
-        <p className="mt-3 text-[11px] text-white/45">
-          {timeAgo(listing.updatedAt)} · {listing.clicks.toLocaleString()} clicks · {listing.nights} nights
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link href={`/v/${listing.id}`} className="ghost">
-            Visitar
-          </Link>
-          <button type="button" className="cta" onClick={() => onTake(district, listing)}>
-            Take #1
+        {listing.house ? null : (
+          <p className="mt-3 text-[11px] text-white/45">
+            {timeAgo(listing.updatedAt)} · {listing.clicks.toLocaleString()} clicks · {listing.nights} nights
+          </p>
+        )}
+        {listing.house ? (
+          <button type="button" className="cta mt-4 w-full" onClick={() => onTake(district)}>
+            Take #1 · $10
           </button>
-        </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Link href={`/v/${listing.id}`} className="ghost">
+              Visitar
+            </Link>
+            <button type="button" className="cta" onClick={() => onTake(district, listing)}>
+              Take #1
+            </button>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -101,7 +124,12 @@ export function RankingRail({
           style={{ opacity: Math.max(0.35, 1 - index * 0.08) }}
           title={`${item.name} ${usd(item.bid)}`}
         >
-          <TeaserArt name={item.name} district={district} rank={item.rank} />
+          <TeaserArt
+            name={item.name}
+            district={district}
+            rank={item.rank}
+            mediaUrl={item.mediaUrl}
+          />
           <span>#{item.rank}</span>
         </div>
       ))}
@@ -125,21 +153,33 @@ export function RankRow({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">{listing.name}</p>
-          <p className="truncate text-[11px] text-white/40">
-            {timeAgo(listing.updatedAt)} · {listing.clicks.toLocaleString()} clicks
-          </p>
+          {listing.house ? (
+            <p className="truncate text-[11px] font-semibold tracking-wider text-white/50">
+              {listing.label} · FOUNDER CREDIT $0
+            </p>
+          ) : (
+            <p className="truncate text-[11px] text-white/40">
+              {timeAgo(listing.updatedAt)} · {listing.clicks.toLocaleString()} clicks
+            </p>
+          )}
         </div>
         <span className="font-semibold" style={{ color: meta.hex }}>
-          {usd(listing.bid)}
+          {listing.house ? "$0" : usd(listing.bid)}
         </span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <button type="button" className="cta slim" onClick={onOutbid}>
-          Outbid {usd(listing.bid + TAKE_STEP_USD)}
+          {listing.house ? "Take #1 · $10" : `Outbid ${usd(listing.bid + TAKE_STEP_USD)}`}
         </button>
-        <Link href={`/v/${listing.id}`} className="ghost slim">
-          Visitar
-        </Link>
+        {listing.house ? (
+          <button type="button" className="ghost slim" onClick={onOutbid}>
+            Claim this side
+          </button>
+        ) : (
+          <Link href={`/v/${listing.id}`} className="ghost slim">
+            Visitar
+          </Link>
+        )}
       </div>
     </div>
   );

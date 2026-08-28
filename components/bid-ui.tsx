@@ -16,6 +16,10 @@ export type ClientListing = {
   updatedAt: number;
   rank: number;
   nights: number;
+  house?: boolean;
+  label?: "SPONSORED";
+  line?: string;
+  mediaUrl?: string;
 };
 
 export type ClientBoard = {
@@ -194,6 +198,7 @@ export function useBoard(initial: {
   const latest = useMemo(() => {
     if (!board) return [];
     return [...board.districts.casino.listings, ...board.districts.red.listings]
+      .filter((item) => !item.house)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 6);
   }, [board]);
