@@ -108,6 +108,17 @@ test("districts are independent auctions", () => {
   assert.equal(quoteClaim({ listings, district: "red", walletId: "x" }).requiredBid, 205);
 });
 
+test("disabled listings do not rank or contribute board value", () => {
+  const listings = [
+    listing({ id: "enabled", bid: 20 }),
+    listing({ id: "disabled", bid: 500, disabled: true }),
+  ];
+  assert.deepEqual(listingsForDistrict(listings, "casino").map((item) => item.id), [
+    "enabled",
+  ]);
+  assert.equal(boardValue(listings, "casino"), 20);
+});
+
 test("outbid a specific listing uses that bid + $5", () => {
   const listings = [
     listing({ id: "one", bid: 90, createdAt: 1 }),

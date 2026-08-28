@@ -1,11 +1,13 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { assertProductionEnv } from "./env";
 
 const WALLET_COOKIE = "ns_wallet";
 const AGE_COOKIE = "ns_18";
 const WEEK = 60 * 60 * 24 * 7;
 
 function sessionSecret(): string {
+  assertProductionEnv();
   return process.env.SESSION_SECRET || "nightstrip-demo-session";
 }
 

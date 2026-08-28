@@ -42,6 +42,7 @@ export function BidForm({
   compact,
   amountDue,
   alreadyListed,
+  livePayments,
 }: {
   district: District;
   takeNumberOne: number;
@@ -55,6 +56,7 @@ export function BidForm({
   compact?: boolean;
   amountDue?: number;
   alreadyListed?: boolean;
+  livePayments?: boolean;
 }) {
   const meta = DISTRICT_META[district];
   const min = Math.max(MIN_BID_USD, takeNumberOne);
@@ -118,9 +120,10 @@ export function BidForm({
         </p>
       ) : null}
       {!compact ? (
-        <p className="text-[11px] leading-5 text-white/40">
-          Min +$5 · pay the difference · stay ranked until outbid · this side only.
-        </p>
+        <div className="space-y-1 text-[11px] leading-5 text-white/40">
+          <p>Min +$5 · pay the difference · stay ranked until outbid · this side only.</p>
+          {livePayments ? <p>Final rank is set when the signed network confirmation arrives.</p> : null}
+        </div>
       ) : null}
     </form>
   );
@@ -179,7 +182,7 @@ export function useBoard(initial: {
 
   useEffect(() => {
     const first = setTimeout(() => void refresh(), 0);
-    const timer = setInterval(() => void refresh(), 12000);
+    const timer = setInterval(() => void refresh(), 45000);
     return () => {
       clearTimeout(first);
       clearInterval(timer);

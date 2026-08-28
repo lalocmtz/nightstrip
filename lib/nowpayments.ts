@@ -38,6 +38,10 @@ export function nowpaymentsConfigured(): boolean {
   );
 }
 
+export function demoPaymentsEnabled(): boolean {
+  return !process.env.VERCEL && !nowpaymentsConfigured();
+}
+
 export function nowpaymentsApiBase(): string {
   return process.env.NOWPAYMENTS_SANDBOX === "true"
     ? "https://api-sandbox.nowpayments.io/v1"
@@ -93,5 +97,6 @@ export async function createNowpaymentsInvoice(input: {
 }
 
 export function isPaidStatus(status: string | undefined): boolean {
-  return status === "finished" || status === "confirmed";
+  // `confirmed` is still intermediate; only `finished` means merchant settlement.
+  return status === "finished";
 }

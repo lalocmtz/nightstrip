@@ -1,5 +1,5 @@
 import { DISTRICTS } from "./constants";
-import { nowpaymentsConfigured } from "./nowpayments";
+import { demoPaymentsEnabled } from "./nowpayments";
 import {
   boardValue,
   listingsForDistrict,
@@ -9,26 +9,53 @@ import {
 import { readStore } from "./store";
 import type { BoardPayload } from "./types";
 
-export async function readBoard(): Promise<BoardPayload> {
-  return readStore((state) => {
-    const now = Date.now();
-    const districts = {} as BoardPayload["districts"];
-    for (const district of DISTRICTS) {
-      const listings = withRanks(listingsForDistrict(state.listings, district), now);
-      districts[district] = {
-        listings,
-        boardValue: boardValue(state.listings, district),
-        takeNumberOne: minTakeNumberOne(listings[0]?.bid),
-      };
-    }
-    return {
-      generatedAt: now,
-      demoPayments: !nowpaymentsConfigured(),
-      boardValue: boardValue(state.listings),
-      allTimePot: state.allTimePot,
-      districts,
+const BOARD_CACHE_MS = 7_500;
+
+type BoardGlobals = typeof globalThis & {
+  __nightstripBoardCache?: { value: BoardPayload; expiresAt: number };
+};
+
+export function boardFromState(
+  state: import("./types").StoreState,
+  now = Date.now(),
+): BoardPayload {
+  const districts = {} as BoardPayload["districts"];
+  for (const district of DISTRICTS) {
+    const listings = withRanks(listingsForDistrict(state.listings, district), now);
+    districts[district] = {
+      listings,
+      boardValue: boardValue(state.listings, district),
+      takeNumberOne: minTakeNumberOne(listings[0]?.bid),
     };
-  });
+  }
+  return {
+    generatedAt: now,
+    demoPayments: demoPaymentsEnabled(),
+    boardValue: boardValue(state.listings),
+    allTimePot: state.allTimePot,
+    districts,
+  };
+}
+
+export function cacheBoard(board: BoardPayload): void {
+  const globals = globalThis as BoardGlobals;
+  globals.__nightstripBoardCache = {
+    value: board,
+    expiresAt: Date.now() + BOARD_CACHE_MS,
+  };
+}
+
+export function invalidateBoardCache(): void {
+  delete (globalThis as BoardGlobals).__nightstripBoardCache;
+}
+
+export async function readBoard(): Promise<BoardPayload> {
+  const globals = globalThis as BoardGlobals;
+  const cached = globals.__nightstripBoardCache;
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const board = await readStore((state) => boardFromState(state));
+  cacheBoard(board);
+  return board;
 }
 
 export function appUrl(): string {

@@ -5,5 +5,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const board = await readBoard();
-  return NextResponse.json(serializeBoard(board));
+  return NextResponse.json(serializeBoard(board), {
+    headers: {
+      "Cache-Control": "public, s-maxage=5, stale-while-revalidate=5",
+    },
+  });
 }
