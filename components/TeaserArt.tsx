@@ -1,0 +1,40 @@
+"use client";
+
+type Props = {
+  name: string;
+  district: "casino" | "red";
+  rank: number;
+  className?: string;
+};
+
+function hash(value: string): number {
+  let h = 0;
+  for (let i = 0; i < value.length; i += 1) h = (h * 31 + value.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+export function TeaserArt({ name, district, rank, className }: Props) {
+  const seed = hash(name + district);
+  const x = 30 + (seed % 40);
+  const y = 28 + ((seed >> 4) % 36);
+  const gold = district === "casino";
+
+  return (
+    <div className={`teaser-art ${gold ? "teaser-gold" : "teaser-red"} ${className ?? ""}`}>
+      <div className="orb" style={{ left: `${x}%`, top: `${y}%` }} />
+      <div className="orb orb-2" />
+      <div className="scan" />
+      {district === "red" ? (
+        <div className="badges">
+          <span className="rec">REC</span>
+          <span>TEASER</span>
+          <span>18+</span>
+        </div>
+      ) : rank === 1 ? (
+        <div className="badges">
+          <span>SFW FEED</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
