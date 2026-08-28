@@ -168,8 +168,12 @@ export function useBoard(initial: {
   }
 
   useEffect(() => {
+    const first = setTimeout(() => void refresh(), 0);
     const timer = setInterval(() => void refresh(), 12000);
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
   }, []);
 
   const latest = useMemo(() => {
