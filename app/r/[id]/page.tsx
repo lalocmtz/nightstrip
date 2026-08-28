@@ -3,6 +3,9 @@ import Link from "next/link";
 import { DISTRICT_META } from "@/lib/constants";
 import { usd } from "@/lib/money";
 import { readStore } from "@/lib/store";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +34,7 @@ export default async function ReceiptPage({
         <Row label="Receipt" value={receipt.id} />
         <Row label="District" value={meta.label} accent={meta.hex} />
         <Row label="Listing" value={receipt.name} />
-        <Row label="Rank at purchase" value={`#${receipt.rank}`} />
+        <Row label="Rank at delivery" value={`#${receipt.rank}`} />
         <Row label="Bid" value={usd(receipt.bid)} />
         <Row label="Paid" value={usd(receipt.amountPaid)} />
         <Row label="Mode" value={receipt.demo ? "Demo credits" : "NOWPayments"} />
