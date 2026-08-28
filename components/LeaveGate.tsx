@@ -18,7 +18,7 @@ export function LeaveGate({
   url: string;
   aged: boolean;
 }) {
-  const [allowed, setAllowed] = useState(aged);
+  const [allowed, setAllowed] = useState(aged || district === "casino");
   const [busy, setBusy] = useState(false);
   const meta = DISTRICT_META[district];
   const host = (() => {

@@ -13,7 +13,9 @@ export function listingsForDistrict(
   listings: Listing[],
   district: District,
 ): Listing[] {
-  return sortListings(listings.filter((item) => item.district === district));
+  return sortListings(
+    listings.filter((item) => item.district === district && !item.disabled),
+  );
 }
 
 export function nightsHeld(createdAt: number, now: number): number {
@@ -102,7 +104,10 @@ export function applyClaim(input: {
   listingId: string;
 }): { listings: Listing[]; listing: Listing } {
   const existing = input.listings.find(
-    (item) => item.district === input.district && item.walletId === input.walletId,
+    (item) =>
+      item.district === input.district &&
+      item.walletId === input.walletId &&
+      !item.disabled,
   );
 
   if (existing) {
@@ -146,6 +151,8 @@ export function rankOf(listings: Listing[], listingId: string): number {
 
 export function boardValue(listings: Listing[], district?: District): number {
   return listings
-    .filter((item) => (district ? item.district === district : true))
+    .filter(
+      (item) => !item.disabled && (district ? item.district === district : true),
+    )
     .reduce((sum, item) => sum + item.bid, 0);
 }

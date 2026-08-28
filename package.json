@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/ranking.test.ts lib/nowpayments.test.ts lib/identity.test.ts"
+    "test": "tsx --test lib/*.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

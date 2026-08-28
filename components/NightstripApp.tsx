@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AgeGate } from "@/components/AgeGate";
 import {
   BidForm,
   DistrictToggle,
@@ -11,42 +10,43 @@ import {
 } from "@/components/bid-ui";
 import { HeroCard, RankRow, RankingRail } from "@/components/BoardBits";
 import { ReelFeed } from "@/components/ReelFeed";
+import { HowItWorks } from "@/components/HowItWorks";
 import { DISTRICT_META, MIN_BID_USD, type District } from "@/lib/constants";
 import { timeAgo, usd } from "@/lib/money";
 import type { Quote } from "@/lib/types";
-
-const AGE_KEY = "ns_18";
 
 export function NightstripApp({
   initialBoard,
   initialCredits,
   demoPayments: demoFromServer,
+  claimsDisabled,
 }: {
   initialBoard: import("@/components/bid-ui").ClientBoard;
   initialCredits: number;
   demoPayments: boolean;
+  claimsDisabled: boolean;
 }) {
   const { board, credits, demoPayments, refresh, setCredits, latest } = useBoard({
     board: initialBoard,
     credits: initialCredits,
     demoPayments: demoFromServer,
   });
-  const [aged, setAged] = useState(false);
   const [district, setDistrict] = useState<District>("casino");
   const [sheet, setSheet] = useState(false);
+  const [desktop, setDesktop] = useState(false);
   const [identity, setIdentity] = useState("");
   const [delta, setDelta] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [muted, setMuted] = useState(true);
   const [target, setTarget] = useState<string | undefined>(undefined);
   const [quote, setQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
-    if (document.cookie.includes("ns_18=1") || localStorage.getItem(AGE_KEY) === "1") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- 18+ cookie hydrate
-      setAged(true);
-    }
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
 
   const takeOne = board?.districts[district].takeNumberOne ?? MIN_BID_USD;
@@ -57,6 +57,9 @@ export function NightstripApp({
   const bid = Math.max(requestedBid, quote?.requiredBid ?? requestedBid);
 
   useEffect(() => {
+    if (claimsDisabled || (!sheet && !desktop)) {
+      return;
+    }
     const controller = new AbortController();
     const params = new URLSearchParams({
       district,
@@ -76,7 +79,7 @@ export function NightstripApp({
       });
 
     return () => controller.abort();
-  }, [board?.generatedAt, district, requestedBid, target]);
+  }, [board?.generatedAt, claimsDisabled, desktop, district, requestedBid, sheet, target]);
 
   const openTake = useCallback(
     (next: District, listing?: ClientListing) => {
@@ -91,6 +94,7 @@ export function NightstripApp({
   );
 
   async function claim() {
+    if (claimsDisabled) return;
     setBusy(true);
     setError("");
     const res = await fetch("/api/claim", {
@@ -138,14 +142,6 @@ export function NightstripApp({
 
   return (
     <div className="ns-root">
-      <AgeGate
-        open={!aged}
-        onDone={() => {
-          localStorage.setItem(AGE_KEY, "1");
-          setAged(true);
-        }}
-      />
-
       <header className="ns-header">
         <div className="brand">
           <Link href="/" className="logo">
@@ -185,20 +181,14 @@ export function NightstripApp({
       </header>
 
       <div className="mobile-only">
-        {aged ? (
-          <ReelFeed
-            key={district}
-            casino={casino}
-            red={red}
-            district={district}
-            onDistrict={setDistrict}
-            onTake={openTake}
-            muted={muted}
-            onMuted={setMuted}
-          />
-        ) : (
-          <div className="h-[80dvh]" />
-        )}
+        <ReelFeed
+          key={district}
+          casino={casino}
+          red={red}
+          district={district}
+          onDistrict={setDistrict}
+          onTake={openTake}
+        />
       </div>
 
       <main className="desk-only board">
@@ -234,6 +224,8 @@ export function NightstripApp({
             onSubmit={claim}
             amountDue={quote?.amountDue}
             alreadyListed={quote?.alreadyListed}
+            livePayments={!demoPayments}
+            claimsDisabled={claimsDisabled}
           />
           <div>
             <p className="side-label">Latest activity</p>
@@ -268,6 +260,8 @@ export function NightstripApp({
         </aside>
       </main>
 
+      <HowItWorks />
+
       <footer className="ns-footer">
         <p>
           Built by{" "}
@@ -275,8 +269,14 @@ export function NightstripApp({
             @lalodtc
           </a>
         </p>
-        <p className="opacity-60">Mentioned on X</p>
-        {demoPayments ? <span className="demo-pill">DEMO</span> : <span className="demo-pill live">LIVE PAY</span>}
+        <Link href="/faq">FAQ</Link>
+        {claimsDisabled ? (
+          <span className="demo-pill">READ ONLY</span>
+        ) : demoPayments ? (
+          <span className="demo-pill">DEMO</span>
+        ) : (
+          <span className="demo-pill live">LIVE PAY</span>
+        )}
         <p className="disclaimer">
           SFW feed · explicit only behind Visitar · host zero porn · process zero bets
         </p>
@@ -298,6 +298,8 @@ export function NightstripApp({
               onSubmit={claim}
               amountDue={quote?.amountDue}
               alreadyListed={quote?.alreadyListed}
+              livePayments={!demoPayments}
+              claimsDisabled={claimsDisabled}
             />
             <button type="button" className="mt-3 w-full text-sm text-white/40" onClick={() => setSheet(false)}>
               Close

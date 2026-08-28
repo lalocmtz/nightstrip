@@ -16,6 +16,10 @@ export type ClientListing = {
   updatedAt: number;
   rank: number;
   nights: number;
+  house?: boolean;
+  label?: "SPONSORED";
+  line?: string;
+  mediaUrl?: string;
 };
 
 export type ClientBoard = {
@@ -42,6 +46,8 @@ export function BidForm({
   compact,
   amountDue,
   alreadyListed,
+  livePayments,
+  claimsDisabled,
 }: {
   district: District;
   takeNumberOne: number;
@@ -55,6 +61,8 @@ export function BidForm({
   compact?: boolean;
   amountDue?: number;
   alreadyListed?: boolean;
+  livePayments?: boolean;
+  claimsDisabled?: boolean;
 }) {
   const meta = DISTRICT_META[district];
   const min = Math.max(MIN_BID_USD, takeNumberOne);
@@ -106,10 +114,10 @@ export function BidForm({
       />
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || claimsDisabled}
         className="h-12 rounded-2xl bg-[var(--cta)] text-sm font-bold text-black disabled:opacity-60"
       >
-        Claim · pay {usd(due)}
+        {claimsDisabled ? "Claims paused" : `Claim · pay ${usd(due)}`}
       </button>
       {error ? <p className="text-xs text-[var(--magenta)]">{error}</p> : null}
       {alreadyListed ? (
@@ -118,9 +126,10 @@ export function BidForm({
         </p>
       ) : null}
       {!compact ? (
-        <p className="text-[11px] leading-5 text-white/40">
-          Min +$5 · pay the difference · stay ranked until outbid · this side only.
-        </p>
+        <div className="space-y-1 text-[11px] leading-5 text-white/40">
+          <p>Min +$5 · pay the difference · stay ranked until outbid · this side only.</p>
+          {livePayments ? <p>Final rank is set when the signed network confirmation arrives.</p> : null}
+        </div>
       ) : null}
     </form>
   );
@@ -179,7 +188,7 @@ export function useBoard(initial: {
 
   useEffect(() => {
     const first = setTimeout(() => void refresh(), 0);
-    const timer = setInterval(() => void refresh(), 12000);
+    const timer = setInterval(() => void refresh(), 45000);
     return () => {
       clearTimeout(first);
       clearInterval(timer);
@@ -189,6 +198,7 @@ export function useBoard(initial: {
   const latest = useMemo(() => {
     if (!board) return [];
     return [...board.districts.casino.listings, ...board.districts.red.listings]
+      .filter((item) => !item.house)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 6);
   }, [board]);

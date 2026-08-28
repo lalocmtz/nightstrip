@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { hasAgeGate } from "@/lib/session";
 import { readStore } from "@/lib/store";
 import { LeaveGate } from "@/components/LeaveGate";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export const dynamic = "force-dynamic";
 

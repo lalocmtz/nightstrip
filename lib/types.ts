@@ -11,6 +11,12 @@ export type Listing = {
   clicks: number;
   createdAt: number;
   updatedAt: number;
+  disabled?: boolean;
+  /** Presentation-only inventory owned by NIGHTSTRIP; never persisted as a paid bid. */
+  house?: boolean;
+  label?: "SPONSORED";
+  line?: string;
+  mediaUrl?: string;
 };
 
 export type Wallet = {
@@ -42,18 +48,24 @@ export type PendingClaim = {
   handle: string;
   url: string;
   bid: number;
+  /** Cash still due through NOWPayments after account credit was applied. */
   amountDue: number;
+  /** Total value applied to the listing, including account credit. */
+  grossAmountDue?: number;
+  creditApplied?: number;
   createdAt: number;
 };
 
-export type Activity = {
-  id: string;
-  district: District;
-  name: string;
-  handle: string;
-  rank: number;
-  bid: number;
-  createdAt: number;
+export type OrphanIpn = {
+  paymentId: string;
+  orderId: string;
+  status: string;
+  priceAmount: number | null;
+  priceCurrency: string;
+  actuallyPaid: number | null;
+  payCurrency: string;
+  receivedAt: number;
+  reason: "unknown_order" | "amount_mismatch";
 };
 
 export type StoreState = {
@@ -62,7 +74,7 @@ export type StoreState = {
   receipts: Receipt[];
   pendingClaims: PendingClaim[];
   processedIpnIds: string[];
-  activity: Activity[];
+  orphanIpns: OrphanIpn[];
   allTimePot: number;
 };
 

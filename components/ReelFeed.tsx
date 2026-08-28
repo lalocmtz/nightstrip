@@ -13,16 +13,12 @@ export function ReelFeed({
   district,
   onDistrict,
   onTake,
-  muted,
-  onMuted,
 }: {
   casino: ClientListing[];
   red: ClientListing[];
   district: District;
   onDistrict: (district: District) => void;
   onTake: (district: District, listing?: ClientListing) => void;
-  muted: boolean;
-  onMuted: (value: boolean) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
@@ -75,9 +71,6 @@ export function ReelFeed({
             </button>
           ))}
         </div>
-        <button type="button" className="chip" onClick={() => onMuted(!muted)}>
-          {muted ? "Muted" : "Sound on"}
-        </button>
       </div>
 
       <div
@@ -102,7 +95,7 @@ export function ReelFeed({
             </div>
           </section>
         ) : (
-          listings.map((item, itemIndex) => (
+          listings.map((item) => (
             <section key={item.id} className="reel-slide">
               <div className={`reel-frame ${item.district}`}>
                 <TeaserArt
@@ -110,22 +103,32 @@ export function ReelFeed({
                   district={item.district}
                   rank={item.rank}
                   className="absolute inset-0"
+                  mediaUrl={item.mediaUrl}
                 />
                 <div className="reel-copy">
-                  <p className="text-xs tracking-[0.25em] text-white/50">#{item.rank} · {meta.label}</p>
+                  <p className="text-xs tracking-[0.25em] text-white/50">
+                    {item.house ? `${item.label} · #1` : `#${item.rank}`} · {meta.label}
+                  </p>
                   <h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl text-white">
                     {item.name}
                   </h2>
-                  <p className="mt-2 text-sm text-white/60">{item.handle}</p>
-                  <p className="mt-3 font-[family-name:var(--font-display)] text-3xl" style={{ color: meta.hex }}>
-                    {usd(item.bid)}
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-white/70">
+                    {item.line ?? item.handle}
                   </p>
-                  <p className="mt-2 text-[11px] text-white/45">
-                    {timeAgo(item.updatedAt)} · {item.clicks.toLocaleString()} clicks · {item.nights} nights
-                  </p>
-                  {itemIndex > 0 && muted ? (
-                    <p className="mt-3 text-[11px] text-white/35">Muted until you unmute.</p>
-                  ) : null}
+                  {item.house ? (
+                    <p className="mt-3 text-xs font-bold tracking-[0.16em]" style={{ color: meta.hex }}>
+                      FOUNDER CREDIT · $0
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-3 font-[family-name:var(--font-display)] text-3xl" style={{ color: meta.hex }}>
+                        {usd(item.bid)}
+                      </p>
+                      <p className="mt-2 text-[11px] text-white/45">
+                        {timeAgo(item.updatedAt)} · {item.clicks.toLocaleString()} clicks · {item.nights} nights
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </section>
@@ -134,20 +137,28 @@ export function ReelFeed({
       </div>
 
       <div className="reel-dock">
-        <Link
-          className="ghost"
-          href={active ? `/v/${active.id}` : "/"}
-          aria-disabled={!active}
-        >
-          Visitar
-        </Link>
-        <button
-          type="button"
-          className="cta"
-          onClick={() => onTake(district, active)}
-        >
-          Take this spot
-        </button>
+        {active?.house ? (
+          <button type="button" className="cta col-span-2" onClick={() => onTake(district)}>
+            Take #1 · $10
+          </button>
+        ) : (
+          <>
+            <Link
+              className="ghost"
+              href={active ? `/v/${active.id}` : "/"}
+              aria-disabled={!active}
+            >
+              Visitar
+            </Link>
+            <button
+              type="button"
+              className="cta"
+              onClick={() => onTake(district, active)}
+            >
+              Take this spot
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

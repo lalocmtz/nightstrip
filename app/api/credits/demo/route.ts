@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import { DEMO_GRANT_USD } from "@/lib/constants";
-import { nowpaymentsConfigured } from "@/lib/nowpayments";
+import { demoPaymentsEnabled } from "@/lib/nowpayments";
 import { grantDemoCredits } from "@/lib/claim";
 import { getWalletId } from "@/lib/session";
+import { hasAllowedOrigin } from "@/lib/request-security";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
-  if (nowpaymentsConfigured()) {
+export async function POST(request: Request) {
+  if (!hasAllowedOrigin(request)) {
+    return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  }
+  if (!demoPaymentsEnabled()) {
     return NextResponse.json(
-      { error: "Demo credits are disabled while NOWPayments is configured." },
+      { error: "Demo credits are available only in local development." },
       { status: 403 },
     );
   }

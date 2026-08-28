@@ -1,4 +1,17 @@
+import { isIP } from "node:net";
+
 const HANDLE = /^@[a-zA-Z0-9._]{2,32}$/;
+const BLOCKED_SHORTENERS = new Set([
+  "bit.ly",
+  "t.co",
+  "tinyurl.com",
+  "is.gd",
+  "goo.gl",
+  "ow.ly",
+  "buff.ly",
+  "cutt.ly",
+  "rebrand.ly",
+]);
 
 export type Identity = {
   name: string;
@@ -29,7 +42,7 @@ export function parseIdentity(rawName: string, rawUrl?: string): Identity | { er
     if (!urlIn && nameIn) {
       return { error: "Add a https:// destination or an @handle." };
     }
-    return { error: "Destination must be an http(s) URL." };
+    return { error: "Destination must be a safe https URL." };
   }
 
   const display =
@@ -57,8 +70,21 @@ export function normalizeHttpUrl(value: string): string | null {
   } catch {
     return null;
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-  if (!parsed.hostname.includes(".")) return null;
+  if (parsed.protocol !== "https:") return null;
+  if (parsed.username || parsed.password) return null;
+
+  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  const ipCandidate = hostname.replace(/^\[|\]$/g, "");
+  if (isIP(ipCandidate) !== 0) return null;
+  if (!hostname.includes(".")) return null;
+  if (hostname.split(".").some((label) => label.startsWith("xn--"))) return null;
+  if (
+    [...BLOCKED_SHORTENERS].some(
+      (blocked) => hostname === blocked || hostname.endsWith(`.${blocked}`),
+    )
+  ) {
+    return null;
+  }
   parsed.hash = "";
   return parsed.toString();
 }

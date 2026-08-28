@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { neon } from "@neondatabase/serverless";
+import { assertProductionEnv } from "./env";
 import type { StoreState, Wallet } from "./types";
+
+assertProductionEnv();
 
 const EMPTY: StoreState = {
   listings: [],
@@ -9,7 +12,7 @@ const EMPTY: StoreState = {
   receipts: [],
   pendingClaims: [],
   processedIpnIds: [],
-  activity: [],
+  orphanIpns: [],
   allTimePot: 0,
 };
 
@@ -36,7 +39,7 @@ function filePath(): string {
 async function readFileStore(): Promise<StoreState> {
   try {
     const raw = await readFile(filePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as StoreState) };
+    return hydrateState(JSON.parse(raw) as Partial<StoreState>);
   } catch {
     return structuredClone(EMPTY);
   }
@@ -59,19 +62,73 @@ function db() {
 
 type Sql = NonNullable<ReturnType<typeof db>>;
 
-async function ensureTable(sql: Sql): Promise<void> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS nightstrip_state (
-      id INTEGER PRIMARY KEY,
-      data JSONB NOT NULL,
-      version INTEGER NOT NULL DEFAULT 0
-    )
-  `;
-  await sql`
-    INSERT INTO nightstrip_state (id, data, version)
-    VALUES (1, ${JSON.stringify(EMPTY)}::jsonb, 0)
-    ON CONFLICT (id) DO NOTHING
-  `;
+type StoreGlobals = typeof globalThis & {
+  __nightstripTablesReady?: Promise<void>;
+};
+
+function ensureTables(sql: Sql): Promise<void> {
+  // Until Preview has its own Neon branch, previews must remain strictly read-only.
+  if (process.env.VERCEL_ENV === "preview") return Promise.resolve();
+  const globals = globalThis as StoreGlobals;
+  if (!globals.__nightstripTablesReady) {
+    globals.__nightstripTablesReady = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS nightstrip_state (
+          id INTEGER PRIMARY KEY,
+          data JSONB NOT NULL,
+          version INTEGER NOT NULL DEFAULT 0
+        )
+      `;
+      await sql`
+        INSERT INTO nightstrip_state (id, data, version)
+        VALUES (1, ${JSON.stringify(EMPTY)}::jsonb, 0)
+        ON CONFLICT (id) DO NOTHING
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS nightstrip_listing_clicks (
+          listing_id TEXT PRIMARY KEY,
+          clicks BIGINT NOT NULL DEFAULT 0
+        )
+      `;
+    })().catch((error) => {
+      delete globals.__nightstripTablesReady;
+      throw error;
+    });
+  }
+  return globals.__nightstripTablesReady;
+}
+
+function hydrateState(raw: Partial<StoreState> | undefined): StoreState {
+  return {
+    listings: Array.isArray(raw?.listings) ? raw.listings : [],
+    wallets: Array.isArray(raw?.wallets) ? raw.wallets : [],
+    receipts: Array.isArray(raw?.receipts) ? raw.receipts : [],
+    pendingClaims: Array.isArray(raw?.pendingClaims) ? raw.pendingClaims : [],
+    processedIpnIds: Array.isArray(raw?.processedIpnIds) ? raw.processedIpnIds : [],
+    orphanIpns: Array.isArray(raw?.orphanIpns) ? raw.orphanIpns : [],
+    allTimePot: typeof raw?.allTimePot === "number" ? raw.allTimePot : 0,
+  };
+}
+
+async function readDbState(
+  sql: Sql,
+  includeClickDeltas: boolean,
+): Promise<{ state: StoreState; version: number }> {
+  const rows = (await sql`
+    SELECT data, version FROM nightstrip_state WHERE id = 1
+  `) as Array<{ data: Partial<StoreState>; version: number }>;
+  const state = hydrateState(rows[0]?.data);
+  if (includeClickDeltas && process.env.VERCEL_ENV !== "preview") {
+    const clickRows = (await sql`
+      SELECT listing_id, clicks FROM nightstrip_listing_clicks
+    `) as Array<{ listing_id: string; clicks: string | number }>;
+    const deltas = new Map(clickRows.map((row) => [row.listing_id, Number(row.clicks)]));
+    state.listings = state.listings.map((listing) => ({
+      ...listing,
+      clicks: (listing.clicks ?? 0) + (deltas.get(listing.id) ?? 0),
+    }));
+  }
+  return { state, version: rows[0]?.version ?? 0 };
 }
 
 async function withDb<T>(
@@ -79,12 +136,9 @@ async function withDb<T>(
   fn: (state: StoreState) => T | Promise<T>,
   persist: boolean,
 ): Promise<T> {
-  await ensureTable(sql);
+  await ensureTables(sql);
   if (!persist) {
-    const rows = (await sql`SELECT data FROM nightstrip_state WHERE id = 1`) as Array<{
-      data: StoreState;
-    }>;
-    const state: StoreState = { ...EMPTY, ...(rows[0]?.data ?? EMPTY) };
+    const { state } = await readDbState(sql, true);
     return fn(state);
   }
 
@@ -92,15 +146,8 @@ async function withDb<T>(
   // advisory lock is not a safe concurrency primitive here. Persist with an
   // optimistic compare-and-swap on the version column instead.
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const rows = (await sql`
-      SELECT data, version FROM nightstrip_state WHERE id = 1
-    `) as Array<{
-      data: StoreState;
-      version: number;
-    }>;
-    const state: StoreState = { ...EMPTY, ...(rows[0]?.data ?? EMPTY) };
+    const { state, version } = await readDbState(sql, false);
     const result = await fn(state);
-    const version = rows[0]?.version ?? 0;
     const updated = (await sql`
       UPDATE nightstrip_state
       SET data = ${JSON.stringify(state)}::jsonb, version = version + 1
@@ -156,6 +203,24 @@ export async function readStore<T>(
   const sql = db();
   if (sql) return withDb(sql, fn, false);
   return withMemory(fn, false);
+}
+
+export async function incrementListingClicks(listingId: string): Promise<void> {
+  const sql = db();
+  if (!sql) {
+    await withMemory((state) => {
+      const listing = state.listings.find((item) => item.id === listingId);
+      if (listing) listing.clicks += 1;
+    }, true);
+    return;
+  }
+  await ensureTables(sql);
+  await sql`
+    INSERT INTO nightstrip_listing_clicks (listing_id, clicks)
+    VALUES (${listingId}, 1)
+    ON CONFLICT (listing_id)
+    DO UPDATE SET clicks = nightstrip_listing_clicks.clicks + 1
+  `;
 }
 
 export function getWallet(state: StoreState, walletId: string): Wallet {
