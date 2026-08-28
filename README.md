@@ -25,18 +25,19 @@ Built by [@lalodtc](https://x.com/lalodtc). English UI.
 
 ## Payments
 
-NOWPayments when these env vars are set:
+NOWPayments when all three production requirements are set:
 
 - `NOWPAYMENTS_API_KEY`
 - `NOWPAYMENTS_IPN_SECRET`
+- `DATABASE_URL` (durable Postgres state)
 
 `POST /api/webhooks/nowpayments` verifies `x-nowpayments-sig` (HMAC-SHA512) and is idempotent on `payment_id`.
 
-If those keys are missing, the app runs in **demo credit** mode (`+$5,000 demo`). Do not commit secrets.
+If any live requirement is missing, the app runs in **demo credit** mode (`+$5,000 demo`) and will not create a crypto invoice. Do not commit secrets.
 
 ## Persistence
 
-Set `DATABASE_URL` (Neon / Postgres) for durable production rankings. Without it, local `data/store.json` is used in development; Vercel without a database keeps an in-memory / `/tmp` store.
+Set `DATABASE_URL` (Neon / Postgres) for durable production rankings. Without it, local `data/store.json` is used in development; Vercel without a database keeps an ephemeral `/tmp` store and live payments stay disabled.
 
 ## Setup
 

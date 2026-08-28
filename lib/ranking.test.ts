@@ -187,3 +187,18 @@ test("rebid keeps createdAt so older equal bids stay ahead", () => {
   const bea = raised.listings.find((item) => item.walletId === "w2");
   assert.equal(bea?.createdAt, 200);
 });
+
+test("a delayed older payment cannot lower a newer bid", () => {
+  const raised = applyClaim({
+    listings: [listing({ id: "L1", bid: 50, walletId: "w1" })],
+    district: "casino",
+    walletId: "w1",
+    name: "Ada",
+    handle: "@ada",
+    url: "https://example.com",
+    bid: 25,
+    now: 300,
+    listingId: "ignored",
+  });
+  assert.equal(raised.listing.bid, 50);
+});

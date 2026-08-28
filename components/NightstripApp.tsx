@@ -13,6 +13,7 @@ import { HeroCard, RankRow, RankingRail } from "@/components/BoardBits";
 import { ReelFeed } from "@/components/ReelFeed";
 import { DISTRICT_META, MIN_BID_USD, type District } from "@/lib/constants";
 import { timeAgo, usd } from "@/lib/money";
+import type { Quote } from "@/lib/types";
 
 const AGE_KEY = "ns_18";
 
@@ -39,6 +40,7 @@ export function NightstripApp({
   const [error, setError] = useState("");
   const [muted, setMuted] = useState(true);
   const [target, setTarget] = useState<string | undefined>(undefined);
+  const [quote, setQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
     if (document.cookie.includes("ns_18=1") || localStorage.getItem(AGE_KEY) === "1") {
@@ -51,7 +53,30 @@ export function NightstripApp({
   const ranked = board?.districts[district].listings ?? [];
   const targetListing = ranked.find((item) => item.id === target);
   const floor = targetListing ? targetListing.bid + 5 : takeOne;
-  const bid = floor + delta;
+  const requestedBid = floor + delta;
+  const bid = Math.max(requestedBid, quote?.requiredBid ?? requestedBid);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      district,
+      bid: String(requestedBid),
+    });
+    if (target) params.set("target", target);
+
+    void fetch(`/api/claim/quote?${params}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Quote failed");
+        return (await res.json()) as Quote;
+      })
+      .then(setQuote)
+      .catch((quoteError: unknown) => {
+        if (quoteError instanceof DOMException && quoteError.name === "AbortError") return;
+        setQuote(null);
+      });
+
+    return () => controller.abort();
+  }, [board?.generatedAt, district, requestedBid, target]);
 
   const openTake = useCallback(
     (next: District, listing?: ClientListing) => {
@@ -59,6 +84,7 @@ export function NightstripApp({
       setTarget(listing && listing.rank !== 1 ? listing.id : undefined);
       setSheet(true);
       setDelta(0);
+      setQuote(null);
       setError("");
     },
     [],
@@ -206,6 +232,8 @@ export function NightstripApp({
             busy={busy}
             error={error}
             onSubmit={claim}
+            amountDue={quote?.amountDue}
+            alreadyListed={quote?.alreadyListed}
           />
           <div>
             <p className="side-label">Latest activity</p>
@@ -268,6 +296,8 @@ export function NightstripApp({
               busy={busy}
               error={error}
               onSubmit={claim}
+              amountDue={quote?.amountDue}
+              alreadyListed={quote?.alreadyListed}
             />
             <button type="button" className="mt-3 w-full text-sm text-white/40" onClick={() => setSheet(false)}>
               Close

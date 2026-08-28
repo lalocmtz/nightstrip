@@ -11,6 +11,11 @@ export async function POST(request: Request) {
   if (!secret) {
     return NextResponse.json({ error: "IPN secret not configured." }, { status: 501 });
   }
+  if (!process.env.DATABASE_URL) {
+    // Return a retryable error instead of acknowledging a paid invoice that
+    // cannot yet be committed to durable storage.
+    return NextResponse.json({ error: "Durable store not configured." }, { status: 503 });
+  }
 
   let body: Record<string, unknown>;
   try {

@@ -87,22 +87,30 @@ async function withDb<T>(
     const state: StoreState = { ...EMPTY, ...(rows[0]?.data ?? EMPTY) };
     return fn(state);
   }
-  await sql`SELECT pg_advisory_lock(872334)`;
-  try {
-    const rows = (await sql`SELECT data FROM nightstrip_state WHERE id = 1`) as Array<{
+
+  // Neon HTTP queries can use different database sessions, so a session-level
+  // advisory lock is not a safe concurrency primitive here. Persist with an
+  // optimistic compare-and-swap on the version column instead.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const rows = (await sql`
+      SELECT data, version FROM nightstrip_state WHERE id = 1
+    `) as Array<{
       data: StoreState;
+      version: number;
     }>;
     const state: StoreState = { ...EMPTY, ...(rows[0]?.data ?? EMPTY) };
     const result = await fn(state);
-    await sql`
+    const version = rows[0]?.version ?? 0;
+    const updated = (await sql`
       UPDATE nightstrip_state
       SET data = ${JSON.stringify(state)}::jsonb, version = version + 1
-      WHERE id = 1
-    `;
-    return result;
-  } finally {
-    await sql`SELECT pg_advisory_unlock(872334)`;
+      WHERE id = 1 AND version = ${version}
+      RETURNING version
+    `) as Array<{ version: number }>;
+    if (updated.length === 1) return result;
   }
+
+  throw new Error("Store update conflicted too many times. Please retry.");
 }
 
 function withMemory<T>(
